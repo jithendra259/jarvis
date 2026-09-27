@@ -66,9 +66,9 @@ export function ViewController({ appConfig, showWelcome = true }: ViewController
   const { messages } = useSessionMessages(session);
   const { resolvedTheme } = useTheme();
 
-  // Mode: 'docked' keeps the portfolio page fully visible and auto-navigating.
-  // 'full' expands into the immersive full-screen audio visualizer tile.
-  const [viewMode, setViewMode] = useState<'docked' | 'full'>('docked');
+  // Mode: 'docked' keeps the compact HUD/Ask button visible.
+  // 'full' expands into the immersive full-screen audio visualizer and chat interface.
+  const [viewMode, setViewMode] = useState<'docked' | 'full'>('full');
 
   // Activate real-time voice-driven auto navigation
   const { activeTarget, navigateTo } = useVoiceAutoNavigation(session, messages);
@@ -82,7 +82,7 @@ export function ViewController({ appConfig, showWelcome = true }: ViewController
       return;
     }
 
-    // Connect directly to Python LiveKit backend worker on Render
+    // Connect directly to LiveKit backend worker
     try {
       await start();
     } catch (error) {
@@ -105,7 +105,7 @@ export function ViewController({ appConfig, showWelcome = true }: ViewController
 
   return (
     <div className={showWelcome ? 'relative min-h-screen w-full' : 'relative w-full'}>
-      {/* Portfolio page: Always rendered and interactive */}
+      {/* Background / Landing View */}
       {showWelcome && (
         <WelcomeView
           startButtonText={appConfig.startButtonText}
@@ -115,22 +115,31 @@ export function ViewController({ appConfig, showWelcome = true }: ViewController
         />
       )}
 
-      {!isConnected && !isConnecting && <AskButton onStartCall={handleStartCall} />}
+      {!isConnected && !isConnecting && viewMode === 'docked' && (
+        <AskButton
+          onStartCall={() => {
+            setViewMode('full');
+            handleStartCall();
+          }}
+        />
+      )}
 
       {/* Connection Mode Indicator */}
-      <div className="fixed left-5 bottom-5 z-40 flex items-center gap-2 rounded-full border border-white/10 bg-[#1d1d1d]/80 px-3 py-1.5 text-xs font-mono text-white/70 shadow-2xl shadow-black/30 backdrop-blur-xl">
-        {isLocalMode ? (
-          <>
-            <Server className="size-3 text-green-400" />
-            <span>LOCAL</span>
-          </>
-        ) : (
-          <>
-            <Wifi className="size-3 text-blue-400" />
-            <span>CLOUD</span>
-          </>
-        )}
-      </div>
+      {viewMode === 'docked' && (
+        <div className="fixed left-5 bottom-5 z-40 flex items-center gap-2 rounded-full border border-white/10 bg-[#1d1d1d]/80 px-3 py-1.5 text-xs font-mono text-white/70 shadow-2xl shadow-black/30 backdrop-blur-xl">
+          {isLocalMode ? (
+            <>
+              <Server className="size-3 text-green-400" />
+              <span>LOCAL</span>
+            </>
+          ) : (
+            <>
+              <Wifi className="size-3 text-blue-400" />
+              <span>CLOUD</span>
+            </>
+          )}
+        </div>
+      )}
 
       {/* Floating Live Voice HUD */}
       <AnimatePresence>
@@ -147,9 +156,9 @@ export function ViewController({ appConfig, showWelcome = true }: ViewController
         )}
       </AnimatePresence>
 
-      {/* When Connected & in Full Immersion Mode: Fullscreen Visualizer Tile */}
+      {/* Full Immersion Mode: Fullscreen Visualizer & Chat Session */}
       <AnimatePresence>
-        {isConnected && viewMode === 'full' && (
+        {viewMode === 'full' && (
           <motion.div
             key="full-session-view"
             {...VIEW_MOTION_PROPS}

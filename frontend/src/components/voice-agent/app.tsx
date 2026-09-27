@@ -92,6 +92,16 @@ interface AppProps {
 }
 
 export function App({ appConfig, children }: AppProps) {
+  // Warmup backend on mount (wakes up Render container or verifies local server)
+  useEffect(() => {
+    const backendUrl = process.env.NEXT_PUBLIC_RENDER_BACKEND_URL;
+    if (backendUrl && typeof window !== 'undefined') {
+      fetch(`${backendUrl.replace(/\/$/, '')}/health`, { mode: 'cors' }).catch(() => {
+        // Silently ignore warmup errors (Render cold start)
+      });
+    }
+  }, []);
+
   const pathname = usePathname();
   const tokenSource = useMemo(() => {
     // Priority: 1. Development Token Server, 2. Sandbox, 3. Multi-user (fallback)

@@ -159,22 +159,29 @@ export function getMultiUserTokenSource() {
       ? crypto.randomUUID()
       : `room_${Math.random().toString(36).substring(2, 15)}`;
 
-    // Step 2: Get a token for that specific room
-    const tokenResp = await fetch(`/api/token?room=${encodeURIComponent(roomName)}`, {
-      method: 'GET',
-      headers: { 'Content-Type': 'application/json' },
-    });
-    if (!tokenResp.ok) {
-      throw new Error('Failed to get token for room');
+    let tokenData: any;
+    try {
+      const res = await fetch(`http://127.0.0.1:8000/api/livekit/token?room=${encodeURIComponent(roomName)}`);
+      if (res.ok) {
+        tokenData = await res.json();
+      }
+    } catch {
+      // fallback to relative api route
     }
-    const tokenData = await tokenResp.json();
 
-    // Return connection details in the format expected by livekit-client
+    if (!tokenData) {
+      const res = await fetch(`/api/token?room=${encodeURIComponent(roomName)}`);
+      if (!res.ok) {
+        throw new Error('Failed to get token from voice backend');
+      }
+      tokenData = await res.json();
+    }
+
     return {
-      serverUrl: tokenData.serverUrl || tokenData.server_url,
-      roomName: tokenData.roomName || tokenData.room_name,
-      participantToken: tokenData.participantToken || tokenData.participant_token,
-      participantName: tokenData.participantName || tokenData.participant_name,
+      serverUrl: tokenData.serverUrl || tokenData.server_url || tokenData.url,
+      roomName: tokenData.roomName || tokenData.room_name || roomName,
+      participantToken: tokenData.participantToken || tokenData.participant_token || tokenData.token,
+      participantName: tokenData.participantName || tokenData.participant_name || tokenData.identity,
     };
   });
 }
