@@ -127,15 +127,18 @@ export async function fetchHealth(): Promise<{ status: string; llm: { online: bo
   return response.json();
 }
 
+export const WS_BASE =
+  process.env.NEXT_PUBLIC_JARVIS_WS_URL || API_BASE.replace(/^http/, 'ws') + '/ws';
+
 export function createWebSocket(
   onMessage: (event: ActivityEvent) => void,
   onOpen?: () => void,
-  onClose?: () => void,
+  onClose?: (event: CloseEvent) => void,
   onError?: (error: Event) => void
 ): WebSocket {
-  const ws = new WebSocket(`ws://127.0.0.1:8000/ws`);
+  const ws = new WebSocket(WS_BASE);
   ws.onopen = () => onOpen?.();
-  ws.onclose = () => onClose?.();
+  ws.onclose = (event) => onClose?.(event);
   ws.onerror = (error) => onError?.(error);
   ws.onmessage = (event) => {
     try {
