@@ -4,7 +4,6 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { ChatMessage, ActivityEvent, SystemStatus, ConfirmationInfo } from '@/lib/jarvis-api';
 import { useJarvisWebSocket } from '@/hooks/useJarvisWebSocket';
 import { sendChat, confirmAction, fetchSystemStatus, fetchHealth } from '@/lib/jarvis-api';
-import { ActivityFeed } from '@/components/jarvis/ActivityFeed';
 import { ChatPanel, ChatPanelRef } from '@/components/jarvis/ChatPanel';
 import { StatusBar } from '@/components/jarvis/StatusBar';
 import { Button } from '@/components/ui/primitives/button';
@@ -165,23 +164,18 @@ export default function Dashboard() {
 
       {/* Main Content */}
       <main className="flex-1 flex overflow-hidden p-4 gap-4">
-        {/* Left Column - Chat + Activity */}
-        <div className="flex-1 flex flex-col gap-4 min-w-0">
-          <div className="flex-1 flex flex-col min-h-0">
-            <ChatPanel
-              ref={chatPanelRef}
-              messages={messages}
-              onSendMessage={handleSendMessage}
-              onConfirm={handleConfirm}
-              disabled={sending}
-              thinkingContent={thinkingText}
-              pendingConfirmation={pendingConfirmation}
-            />
-          </div>
-
-          <div className="h-64 flex-shrink-0">
-            <ActivityFeed events={activityEvents} />
-          </div>
+        {/* Left Column - Chat */}
+        <div className="flex-1 flex flex-col min-w-0 h-full">
+          <ChatPanel
+            ref={chatPanelRef}
+            messages={messages}
+            onSendMessage={handleSendMessage}
+            onConfirm={handleConfirm}
+            disabled={sending}
+            thinkingContent={thinkingText}
+            pendingConfirmation={pendingConfirmation}
+            events={activityEvents}
+          />
         </div>
 
         {/* Right Column - Status */}

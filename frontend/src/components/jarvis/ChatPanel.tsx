@@ -1,7 +1,7 @@
 'use client';
 
 import { useImperativeHandle, forwardRef, useRef } from 'react';
-import { ChatMessage, ConfirmationInfo } from '@/lib/jarvis-api';
+import { ChatMessage, ConfirmationInfo, ActivityEvent } from '@/lib/jarvis-api';
 import { AIAssistantInterface } from '@/components/ui/ai-assistant-interface';
 
 interface ChatPanelProps {
@@ -11,6 +11,7 @@ interface ChatPanelProps {
   disabled?: boolean;
   thinkingContent?: string;
   pendingConfirmation?: ConfirmationInfo | null;
+  events?: ActivityEvent[];
 }
 
 export interface ChatPanelRef {
@@ -18,7 +19,18 @@ export interface ChatPanelRef {
 }
 
 export const ChatPanel = forwardRef<ChatPanelRef, ChatPanelProps>(
-  ({ messages, onSendMessage, onConfirm, disabled, thinkingContent, pendingConfirmation }, ref) => {
+  (
+    {
+      messages,
+      onSendMessage,
+      onConfirm,
+      disabled,
+      thinkingContent,
+      pendingConfirmation,
+      events,
+    },
+    ref
+  ) => {
     const containerRef = useRef<HTMLDivElement>(null);
 
     useImperativeHandle(ref, () => ({
@@ -38,6 +50,7 @@ export const ChatPanel = forwardRef<ChatPanelRef, ChatPanelProps>(
           disabled={disabled}
           thinkingContent={thinkingContent}
           pendingConfirmation={pendingConfirmation}
+          events={events}
         />
       </div>
     );

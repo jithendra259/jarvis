@@ -1,8 +1,7 @@
 "use client";
 
-import type React from "react";
-
-import { useState, useRef, useEffect } from "react";
+import * as React from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import {
   Search,
   Mic,
@@ -17,6 +16,7 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import AIThinkingBlock from "@/components/ui/ai-thinking-block";
+import { ThinkingState, type TraceNode } from "@/components/ui/ai-agent-response";
 
 export interface AIAssistantInterfaceProps {
   messages?: Array<{
@@ -40,6 +40,94 @@ export interface AIAssistantInterfaceProps {
     arguments?: Record<string, unknown>;
   } | null;
   onConfirm?: (actionId: string, approved: boolean) => void;
+  events?: Array<{
+    type: string;
+    timestamp?: string;
+    tool?: string;
+    arguments?: Record<string, unknown>;
+    message?: string;
+    plan?: string;
+    result?: Record<string, unknown>;
+    duration_ms?: number;
+    [key: string]: unknown;
+  }>;
+}
+
+function mapEventsToTrace(events: any[] = []): TraceNode[] {
+  return events
+    .filter(
+      (e) =>
+        e &&
+        e.type !== "system.status" &&
+        e.type !== "pong" &&
+        e.type !== "ping"
+    )
+    .map((e, idx) => {
+      const isTool =
+        e.type === "tool.started" ||
+        e.type === "tool.completed" ||
+        e.type === "tool.failed";
+      if (isTool) {
+        const isCmd =
+          e.tool === "execute_command" ||
+          (e.arguments && Boolean(e.arguments.command));
+        if (isCmd) {
+          return {
+            id: `trace-${idx}`,
+            type: "terminal",
+            command: (e.arguments?.command as string) || (e.tool as string),
+            output:
+              (e.result?.output as string) ||
+              (e.message as string) ||
+              undefined,
+            exitCode: typeof e.result?.exit_code === "number" ? e.result.exit_code : 0,
+            durationMs: e.duration_ms,
+            status:
+              e.type === "tool.failed"
+                ? "failed"
+                : e.type === "tool.completed"
+                ? "completed"
+                : "running",
+          };
+        }
+        return {
+          id: `trace-${idx}`,
+          type: "tool",
+          toolName: e.tool || "tool",
+          primary: e.tool ? `Run ${e.tool}` : "Tool Execution",
+          secondary: e.arguments ? JSON.stringify(e.arguments) : undefined,
+          status:
+            e.type === "tool.failed"
+              ? "failed"
+              : e.type === "tool.completed"
+              ? "completed"
+              : "running",
+          args: e.arguments,
+          result: e.result,
+          details: e.message
+            ? [{ text: e.message, tone: e.type === "tool.failed" ? "error" : "ctx" }]
+            : undefined,
+        };
+      }
+      if (e.type === "agent.thinking" || e.type === "agent.planned") {
+        return {
+          id: `trace-${idx}`,
+          type: "reasoning",
+          sentences: [e.plan || e.message || "Formulating execution plan..."],
+          durationSeconds: e.duration_ms ? +(e.duration_ms / 1000).toFixed(1) : 1.5,
+        };
+      }
+      return {
+        id: `trace-${idx}`,
+        type: "step",
+        primary: e.type,
+        secondary: e.message || undefined,
+        status:
+          e.type.includes("error") || e.type.includes("failed")
+            ? "failed"
+            : "completed",
+      };
+    });
 }
 
 export function AIAssistantInterface({
@@ -49,6 +137,7 @@ export function AIAssistantInterface({
   thinkingContent,
   pendingConfirmation,
   onConfirm,
+  events,
 }: AIAssistantInterfaceProps = {}) {
   const [inputValue, setInputValue] = useState("");
   const [searchEnabled, setSearchEnabled] = useState(false);
@@ -61,6 +150,7 @@ export function AIAssistantInterface({
   >(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const liveTrace = React.useMemo(() => mapEventsToTrace(events), [events]);
 
   const commandSuggestions = {
     learn: [
@@ -333,6 +423,18 @@ export function AIAssistantInterface({
             <AIThinkingBlock
               title="JARVIS is thinking"
               content={thinkingContent}
+            />
+          </div>
+        )}
+
+        {/* Real-time Agent Execution Trace & Events */}
+        {liveTrace.length > 0 && (
+          <div className="w-full max-w-3xl mb-4 bg-gray-50/80 border border-gray-200/80 rounded-xl p-3 shadow-xs">
+            <ThinkingState
+              nodes={liveTrace}
+              autoPlay={false}
+              defaultExpanded={disabled}
+              workingLabel="JARVIS is working..."
             />
           </div>
         )}
