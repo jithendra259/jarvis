@@ -18,7 +18,7 @@ from agent.events import event_bus
 from agent.runner import run_agent
 from config.settings import settings
 from errors import ErrorCode, JarvisError, NotImplementedYet
-from llm import describe_providers, get_llm_provider
+from llm import describe_providers, get_active_model, get_llm_provider, set_active_model
 from logger.logger import logger
 from tools.registry import PLANNED_TOOLS, registry
 from tools.system import get_hardware_info, get_service_status
@@ -68,6 +68,10 @@ class ConfirmRequest(BaseModel):
     approved: bool = Field(..., description="True executes the stored action, False cancels it")
 
 
+class ModelSelectRequest(BaseModel):
+    model: str = Field(..., min_length=1, description="Model identifier to set as default")
+
+
 # ---------------------------------------------------------------------------
 # Health and status
 # ---------------------------------------------------------------------------
@@ -85,7 +89,7 @@ async def health() -> Dict[str, Any]:
         "llm": {
             "provider": provider.name,
             "online": llm_online,
-            "model": settings.default_model,
+            "model": get_active_model(),
             "endpoint": settings.omniroute_url if provider.name == "omniroute" else settings.ollama_url,
         },
         "voice": {
@@ -107,10 +111,31 @@ async def system_status() -> Dict[str, Any]:
         "hardware": hw,
         "runtime": get_service_status(),
         "services": await describe_providers(),
+        "current_model": get_active_model(),
         "websocket_clients": event_bus.subscriber_count,
         "pending_confirmations": len(confirmation_store.list()),
         **hw,
     }
+
+
+@router.get("/models")
+async def list_models() -> Dict[str, Any]:
+    """List all available models across local LLM providers."""
+    provider = await get_llm_provider()
+    models = await provider.list_models()
+    return {
+        "provider": provider.name,
+        "current_model": get_active_model(),
+        "models": models,
+    }
+
+
+@router.post("/models/select")
+async def select_model(request: ModelSelectRequest) -> Dict[str, Any]:
+    """Set the active LLM model."""
+    active = set_active_model(request.model)
+    logger.info("[api/models] active model set to '%s'", active)
+    return {"success": True, "current_model": active}
 
 
 @router.get("/tools")
@@ -134,10 +159,11 @@ async def recent_events(limit: int = Query(20, ge=1, le=100)) -> Dict[str, Any]:
 @router.post("/chat", response_model=ChatResponse)
 async def chat(request: ChatRequest) -> ChatResponse:
     """Run one full JARVIS turn (understand -> tool -> respond)."""
-    logger.info("[api/chat] %s", request.message)
+    logger.info("[api/chat] %s (model=%s)", request.message, request.model or get_active_model())
     state = await run_agent(
         request.message,
         conversation_id=request.conversation_id,
+        model=request.model or get_active_model(),
     )
     return _state_to_response(state, request.conversation_id)
 

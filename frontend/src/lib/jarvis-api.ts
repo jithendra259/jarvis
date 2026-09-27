@@ -72,14 +72,21 @@ export interface SystemStatus {
   pending_confirmations: number;
 }
 
+export interface ModelsResponse {
+  provider: string;
+  current_model: string;
+  models: string[];
+}
+
 export async function sendChat(
   message: string,
-  conversationId: string = 'default'
+  conversationId: string = 'default',
+  model?: string
 ): Promise<ChatMessage> {
   const response = await fetch(`${API_BASE}/api/chat`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ message, conversation_id: conversationId }),
+    body: JSON.stringify({ message, conversation_id: conversationId, model }),
   });
   if (!response.ok) {
     const error = await response.json();
@@ -121,9 +128,25 @@ export async function fetchSystemStatus(): Promise<SystemStatus> {
   return response.json();
 }
 
-export async function fetchHealth(): Promise<{ status: string; llm: { online: boolean } }> {
+export async function fetchHealth(): Promise<{ status: string; llm: { online: boolean; model?: string } }> {
   const response = await fetch(`${API_BASE}/api/health`);
   if (!response.ok) throw new Error('Health check failed');
+  return response.json();
+}
+
+export async function fetchModels(): Promise<ModelsResponse> {
+  const response = await fetch(`${API_BASE}/api/models`);
+  if (!response.ok) throw new Error('Failed to fetch models');
+  return response.json();
+}
+
+export async function selectModel(model: string): Promise<{ success: boolean; current_model: string }> {
+  const response = await fetch(`${API_BASE}/api/models/select`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ model }),
+  });
+  if (!response.ok) throw new Error('Failed to select model');
   return response.json();
 }
 

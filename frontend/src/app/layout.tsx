@@ -1,11 +1,8 @@
 import type { Metadata } from 'next';
 import { Geist, Geist_Mono } from 'next/font/google';
 import './globals.css';
-import { App as VoiceAgentApp } from '@/components/voice-agent/app';
-import { APP_CONFIG_DEFAULTS } from '@/app-config';
 import { ThemeProvider } from '@/components/theme/theme-provider';
 import { Toaster } from 'sonner';
-import { getStyles } from '@/lib/utils';
 import { cn } from '@/lib/utils';
 
 const geistSans = Geist({
@@ -20,7 +17,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: 'JARVIS | Desktop AI Assistant',
-  description: 'Personal desktop AI assistant powered by LiveKit WebRTC and OmniRoute',
+  description: 'Fully local Windows desktop AI assistant',
 };
 
 interface RootLayoutProps {
@@ -28,9 +25,6 @@ interface RootLayoutProps {
 }
 
 export default function RootLayout({ children }: RootLayoutProps) {
-  const appConfig = APP_CONFIG_DEFAULTS;
-  const styles = getStyles(appConfig);
-
   return (
     <html
       lang="en"
@@ -41,7 +35,9 @@ export default function RootLayout({ children }: RootLayoutProps) {
         'dark scroll-smooth font-sans antialiased'
       )}
     >
-      <head>{styles && <style>{styles}</style>}</head>
+      <head>
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+      </head>
       <body suppressHydrationWarning className="overflow-x-hidden bg-background text-foreground">
         <ThemeProvider
           attribute="class"
@@ -49,7 +45,7 @@ export default function RootLayout({ children }: RootLayoutProps) {
           enableSystem={false}
           disableTransitionOnChange
         >
-          <VoiceAgentApp appConfig={APP_CONFIG_DEFAULTS}>{children}</VoiceAgentApp>
+          {children}
           <Toaster position="top-center" />
         </ThemeProvider>
       </body>

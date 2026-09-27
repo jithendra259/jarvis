@@ -1,3 +1,15 @@
-from .permissions import PermissionLevel, evaluate_permission, TOOL_PERMISSIONS
+"""Security layer: permission evaluation for tool execution."""
 
-__all__ = ["PermissionLevel", "evaluate_permission", "TOOL_PERMISSIONS"]
+from .permissions import (
+    DANGEROUS_COMMAND_KEYWORDS,
+    TOOL_PERMISSIONS,
+    PermissionLevel,
+    evaluate_permission,
+)
+
+__all__ = [
+    "DANGEROUS_COMMAND_KEYWORDS",
+    "TOOL_PERMISSIONS",
+    "PermissionLevel",
+    "evaluate_permission",
+]

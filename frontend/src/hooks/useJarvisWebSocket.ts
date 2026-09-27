@@ -66,13 +66,23 @@ export function useJarvisWebSocket(
   }, []);
 
   const sendMessage = useCallback(
-    (message: string) => {
+    (message: string, model?: string) => {
       if (wsRef.current?.readyState === WebSocket.OPEN) {
-        sendWsMessage(wsRef.current, 'chat', { message, conversation_id: conversationId });
+        sendWsMessage(wsRef.current, 'chat', {
+          message,
+          conversation_id: conversationId,
+          ...(model ? { model } : {}),
+        });
       }
     },
     [conversationId]
   );
+
+  const selectModelWs = useCallback((model: string) => {
+    if (wsRef.current?.readyState === WebSocket.OPEN) {
+      sendWsMessage(wsRef.current, 'model.select', { model });
+    }
+  }, []);
 
   const sendConfirm = useCallback(
     (actionId: string, approved: boolean) => {
@@ -101,5 +111,5 @@ export function useJarvisWebSocket(
     return () => disconnect();
   }, [connect, disconnect]);
 
-  return { connected, error, sendMessage, sendConfirm, disconnect };
+  return { connected, error, sendMessage, selectModelWs, sendConfirm, disconnect };
 }

@@ -54,8 +54,11 @@ _load_environment()
 
 
 def _str(name: str, default: str = "") -> str:
+    """Read a string setting; an empty value falls back to the default."""
     value = os.getenv(name)
-    return default if value is None else value.strip()
+    if value is None or not value.strip():
+        return default
+    return value.strip()
 
 
 def _int(name: str, default: int) -> int:
@@ -85,7 +88,8 @@ def _bool(name: str, default: bool) -> bool:
     return raw.strip().lower() in {"1", "true", "yes", "on"}
 
 
-def _default_data_dir() -> Path:    override = os.getenv("JARVIS_DATA_DIR")
+def _default_data_dir() -> Path:
+    override = os.getenv("JARVIS_DATA_DIR")
     if override:
         return Path(override).expanduser()
     if os.name == "nt":

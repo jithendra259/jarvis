@@ -25,6 +25,7 @@ class AgentState(TypedDict, total=False):
     user_input: str
     conversation_id: str
     messages: List[Dict[str, Any]]
+    model: Optional[str]
 
     # Understanding / planning
     intent: Intent
@@ -55,12 +56,14 @@ def initial_state(
     conversation_id: str = "default",
     messages: Optional[Sequence[Dict[str, Any]]] = None,
     memory_context: Optional[str] = None,
+    model: Optional[str] = None,
 ) -> AgentState:
     """Build a fresh agent state for one turn."""
     return AgentState(
         user_input=user_input,
         conversation_id=conversation_id,
         messages=[dict(message) for message in (messages or [])],
+        model=model,
         intent="unknown",
         plan=None,
         tool_iterations=0,

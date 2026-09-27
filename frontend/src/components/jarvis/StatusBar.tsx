@@ -41,7 +41,38 @@ interface StatusBarProps {
 }
 
 export function StatusBar({ status, wsConnected, llmOnline }: StatusBarProps) {
-  if (!status) return null;
+  if (!status) {
+    return (
+      <div className="p-3 bg-black/20 rounded-lg border border-white/10 text-xs space-y-2">
+        <div className="flex items-center justify-between font-mono">
+          <span className="text-white/40 uppercase tracking-wider">Backend</span>
+          <span className="text-red-400">● Offline</span>
+        </div>
+        <div className="flex flex-wrap gap-2 pt-1">
+          <span
+            className={cn(
+              'px-2 py-1 rounded text-xs font-mono border',
+              wsConnected
+                ? 'bg-cyan-500/10 border-cyan-500/30 text-cyan-400'
+                : 'bg-gray-500/10 border-gray-500/30 text-gray-400'
+            )}
+          >
+            WebSocket {wsConnected ? '● Connected' : '○ Disconnected'}
+          </span>
+          <span
+            className={cn(
+              'px-2 py-1 rounded text-xs font-mono border',
+              llmOnline
+                ? 'bg-green-500/10 border-green-500/30 text-green-400'
+                : 'bg-red-500/10 border-red-500/30 text-red-400'
+            )}
+          >
+            LLM {llmOnline ? '● Online' : '○ Offline'}
+          </span>
+        </div>
+      </div>
+    );
+  }
 
   // Defensive fallback: support both nested status and legacy flat payloads
   const rawStatus = status as unknown as Record<string, any>;

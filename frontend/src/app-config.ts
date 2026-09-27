@@ -36,43 +36,29 @@ export interface AppConfig {
 }
 
 export const APP_CONFIG_DEFAULTS: AppConfig = {
-  companyName: 'Jarvis AI',
-  pageTitle: 'JARVIS | Desktop AI Voice Assistant',
-  pageDescription: 'Real-time Voice AI and Windows Desktop Automation Assistant powered by LiveKit WebRTC.',
+  companyName: 'JARVIS',
+  pageTitle: 'JARVIS | Local Desktop AI Assistant',
+  pageDescription: 'Fully local Windows desktop AI assistant with voice, chat, and computer control.',
 
   supportsChatInput: true,
-  supportsVideoInput: true,
-  supportsScreenShare: true,
-  isPreConnectBufferEnabled: true,
+  supportsVideoInput: false,
+  supportsScreenShare: false,
+  isPreConnectBufferEnabled: false,
 
-  logo: '/lk-logo.svg',
-  accent: '#002cf2',
-  logoDark: '/lk-logo-dark.svg',
-  accentDark: '#1fd5f9',
-  startButtonText: 'Start call',
+  logo: '/icon.ico',
+  accent: '#00d4ff',
+  logoDark: '/icon.ico',
+  accentDark: '#00d4ff',
+  startButtonText: 'Start Voice',
 
-  // optional: audio visualization configuration
-  // audioVisualizerType: 'bar',
-  // audioVisualizerColor: '#002cf2',
-  // audioVisualizerColorDark: '#1fd5f9',
-  // audioVisualizerColorShift: 0.3,
-  // audioVisualizerBarCount: 5,
-  // audioVisualizerType: 'radial',
-  // audioVisualizerRadialBarCount: 24,
-  // audioVisualizerRadialRadius: 100,
-  // audioVisualizerType: 'grid',
-  // audioVisualizerGridRowCount: 25,
-  // audioVisualizerGridColumnCount: 25,
-  // audioVisualizerType: 'wave',
-  // audioVisualizerWaveLineWidth: 3,
   audioVisualizerType: 'aura',
 
   // agent dispatch configuration
-  agentName: process.env.NEXT_PUBLIC_AGENT_NAME ?? process.env.AGENT_NAME ?? 'my-agent',
+  agentName: process.env.NEXT_PUBLIC_AGENT_NAME ?? process.env.AGENT_NAME ?? 'jarvis',
 
   // LiveKit Cloud Sandbox configuration
   sandboxId: undefined,
 
-  // LiveKit connection mode
-  livekitMode: (process.env.NEXT_PUBLIC_LIVEKIT_MODE as 'cloud' | 'local') || 'cloud',
+  // LiveKit connection mode - default to local for fully local operation
+  livekitMode: (process.env.NEXT_PUBLIC_LIVEKIT_MODE as 'cloud' | 'local') || 'local',
 };

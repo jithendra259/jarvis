@@ -3,9 +3,17 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { ChatMessage, ActivityEvent, SystemStatus, ConfirmationInfo } from '@/lib/jarvis-api';
 import { useJarvisWebSocket } from '@/hooks/useJarvisWebSocket';
-import { sendChat, confirmAction, fetchSystemStatus, fetchHealth } from '@/lib/jarvis-api';
+import {
+  sendChat,
+  confirmAction,
+  fetchSystemStatus,
+  fetchHealth,
+  fetchModels,
+  selectModel,
+} from '@/lib/jarvis-api';
 import { ChatPanel, ChatPanelRef } from '@/components/jarvis/ChatPanel';
 import { StatusBar } from '@/components/jarvis/StatusBar';
+import { ModelSelector } from '@/components/jarvis/ModelSelector';
 import { Button } from '@/components/ui/primitives/button';
 import { cn } from '@/lib/utils';
 
@@ -14,6 +22,9 @@ export default function Dashboard() {
   const [activityEvents, setActivityEvents] = useState<ActivityEvent[]>([]);
   const [systemStatus, setSystemStatus] = useState<SystemStatus | null>(null);
   const [llmOnline, setLlmOnline] = useState(false);
+  const [models, setModels] = useState<string[]>([]);
+  const [selectedModel, setSelectedModel] = useState<string>('auto/best-chat');
+  const [loadingModels, setLoadingModels] = useState(false);
   const [sending, setSending] = useState(false);
   const [pendingConfirmation, setPendingConfirmation] = useState<ConfirmationInfo | null>(null);
   const [thinkingText, setThinkingText] = useState<string | undefined>(undefined);
@@ -30,10 +41,30 @@ export default function Dashboard() {
       setThinkingText(event.plan || event.message || 'Executing plan...');
     } else if (event.type === 'tool.started') {
       setThinkingText(`Calling tool: ${event.tool || 'system'}...`);
-    } else if (event.type === 'agent.completed') {
+    } else if (event.type === 'agent.completed' || event.type === 'agent.response') {
       setSending(false);
       setThinkingText(undefined);
-      chatPanelRef.current?.scrollToBottom();
+      const replyContent = (event.reply as string) || (event.type === 'agent.response' ? (event.message as string) : undefined);
+      if (replyContent) {
+        setMessages((prev) => {
+          const last = prev[prev.length - 1];
+          if (last && last.role === 'assistant' && last.content === replyContent) {
+            return prev;
+          }
+          return [
+            ...prev,
+            {
+              role: 'assistant',
+              content: replyContent,
+              timestamp: new Date().toISOString(),
+              actions: (event.actions || event.tool_history) as any,
+              plan: event.plan as string | undefined,
+              observations: event.observations as any,
+            },
+          ];
+        });
+      }
+      setTimeout(() => chatPanelRef.current?.scrollToBottom(), 50);
     } else if (event.type === 'agent.error') {
       setSending(false);
       setThinkingText(undefined);
@@ -59,28 +90,88 @@ export default function Dashboard() {
     }
   }, []);
 
-  const { connected, error: wsError, sendMessage, sendConfirm } = useJarvisWebSocket(
+  const { connected, error: wsError, sendMessage, selectModelWs, sendConfirm } = useJarvisWebSocket(
     handleEvent,
     conversationId
   );
 
-  // Initial health check
-  useEffect(() => {
+  const loadModels = useCallback(() => {
+    setLoadingModels(true);
+    fetchModels()
+      .then((data) => {
+        if (data?.models && Array.isArray(data.models)) {
+          setModels(data.models);
+        }
+        if (data?.current_model) {
+          setSelectedModel(data.current_model);
+        }
+      })
+      .catch(() => {
+        // Fallback to basic list if offline
+        setModels([
+          'auto/best-chat',
+          'auto/best-fast',
+          'auto/best-coding',
+          'auto/best-reasoning',
+          'auto/best-free',
+        ]);
+      })
+      .finally(() => setLoadingModels(false));
+  }, []);
+
+  const handleSelectModel = useCallback(
+    async (model: string) => {
+      setSelectedModel(model);
+      try {
+        selectModelWs(model);
+        await selectModel(model);
+      } catch (err) {
+        console.warn('Could not persist model selection:', err);
+      }
+    },
+    [selectModelWs]
+  );
+
+  const checkHealthAndStatus = useCallback(() => {
     fetchHealth()
-      .then((data: any) => setLlmOnline(Boolean(data?.llm?.online ?? data?.llm_online ?? false)))
+      .then((data: any) => {
+        const isOnline = Boolean(data?.llm?.online ?? data?.llm_online ?? false);
+        setLlmOnline(isOnline);
+        if (data?.llm?.model) {
+          setSelectedModel((prev) => (prev ? prev : data.llm.model));
+        }
+      })
       .catch(() => setLlmOnline(false));
 
     fetchSystemStatus()
-      .then(setSystemStatus)
-      .catch(console.error);
+      .then((status) => {
+        setSystemStatus(status);
+        if (status?.services && Array.isArray(status.services)) {
+          const anyOnline = status.services.some((s) => s.online);
+          if (anyOnline) {
+            setLlmOnline(true);
+          }
+          const allSvcModels = status.services.flatMap((s) => s.models || []);
+          if (allSvcModels.length > 0) {
+            setModels((prev) => (prev.length === 0 ? allSvcModels : prev));
+          }
+        }
+      })
+      .catch(() => setSystemStatus(null));
+  }, []);
 
-    // Refresh system status periodically
+  // Initial health check and model loading
+  useEffect(() => {
+    checkHealthAndStatus();
+    loadModels();
+
+    // Refresh health and system status periodically
     const interval = setInterval(() => {
-      fetchSystemStatus().then(setSystemStatus).catch(console.error);
-    }, 30000);
+      checkHealthAndStatus();
+    }, 10000);
 
     return () => clearInterval(interval);
-  }, []);
+  }, [checkHealthAndStatus, loadModels]);
 
   const handleSendMessage = useCallback(
     async (message: string) => {
@@ -94,10 +185,19 @@ export default function Dashboard() {
       setPendingConfirmation(null);
 
       try {
-        // The actual response comes via WebSocket
-        sendMessage(message);
+        if (connected) {
+          sendMessage(message, selectedModel);
+        } else {
+          const resp = await sendChat(message, conversationId, selectedModel);
+          setSending(false);
+          setThinkingText(undefined);
+          if (resp?.content) {
+            setMessages((prev) => [...prev, resp]);
+          }
+        }
       } catch (err) {
         setSending(false);
+        setThinkingText(undefined);
         console.error('Failed to send message:', err);
         setMessages((prev) => [
           ...prev,
@@ -109,7 +209,7 @@ export default function Dashboard() {
         ]);
       }
     },
-    [sendMessage]
+    [connected, sendMessage, selectedModel, conversationId]
   );
 
   const handleConfirm = useCallback(
@@ -140,7 +240,16 @@ export default function Dashboard() {
           </div>
         </div>
 
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3 sm:gap-4">
+          {/* Model Selector Dropdown */}
+          <ModelSelector
+            models={models}
+            selectedModel={selectedModel}
+            onSelectModel={handleSelectModel}
+            onRefresh={loadModels}
+            isLoading={loadingModels}
+          />
+
           <div className="hidden sm:flex items-center gap-2 text-xs">
             <span
               className={cn(
