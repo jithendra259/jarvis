@@ -9,6 +9,7 @@ interface ChatPanelProps {
   onSendMessage: (message: string) => void;
   onConfirm: (actionId: string, approved: boolean) => void;
   disabled?: boolean;
+  thinkingContent?: string;
   pendingConfirmation?: ConfirmationInfo | null;
 }
 
@@ -17,7 +18,7 @@ export interface ChatPanelRef {
 }
 
 export const ChatPanel = forwardRef<ChatPanelRef, ChatPanelProps>(
-  ({ messages, onSendMessage, onConfirm, disabled, pendingConfirmation }, ref) => {
+  ({ messages, onSendMessage, onConfirm, disabled, thinkingContent, pendingConfirmation }, ref) => {
     const containerRef = useRef<HTMLDivElement>(null);
 
     useImperativeHandle(ref, () => ({
@@ -35,6 +36,7 @@ export const ChatPanel = forwardRef<ChatPanelRef, ChatPanelProps>(
           onSendMessage={onSendMessage}
           onConfirm={onConfirm}
           disabled={disabled}
+          thinkingContent={thinkingContent}
           pendingConfirmation={pendingConfirmation}
         />
       </div>

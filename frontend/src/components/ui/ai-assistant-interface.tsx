@@ -16,6 +16,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import AIThinkingBlock from "@/components/ui/ai-thinking-block";
 
 export interface AIAssistantInterfaceProps {
   messages?: Array<{
@@ -30,6 +31,7 @@ export interface AIAssistantInterfaceProps {
   }>;
   onSendMessage?: (message: string) => void;
   disabled?: boolean;
+  thinkingContent?: string;
   pendingConfirmation?: {
     id: string;
     tool: string;
@@ -44,6 +46,7 @@ export function AIAssistantInterface({
   messages,
   onSendMessage,
   disabled = false,
+  thinkingContent,
   pendingConfirmation,
   onConfirm,
 }: AIAssistantInterfaceProps = {}) {
@@ -307,7 +310,30 @@ export function AIAssistantInterface({
                 </div>
               </div>
             ))}
+            {(disabled || reasonEnabled) && (
+              <div className="flex gap-3 flex-row">
+                <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-semibold flex-shrink-0 bg-blue-100 text-blue-700">
+                  J
+                </div>
+                <div className="w-full max-w-[85%]">
+                  <AIThinkingBlock
+                    title="JARVIS is thinking"
+                    content={thinkingContent}
+                  />
+                </div>
+              </div>
+            )}
             <div ref={messagesEndRef} />
+          </div>
+        )}
+
+        {/* Active thinking block when reasoning is engaged without prior messages */}
+        {!hasMessages && (disabled || reasonEnabled) && (
+          <div className="w-full max-w-xl mb-4">
+            <AIThinkingBlock
+              title="JARVIS is thinking"
+              content={thinkingContent}
+            />
           </div>
         )}
 

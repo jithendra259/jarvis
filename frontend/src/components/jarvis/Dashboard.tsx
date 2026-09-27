@@ -17,6 +17,7 @@ export default function Dashboard() {
   const [llmOnline, setLlmOnline] = useState(false);
   const [sending, setSending] = useState(false);
   const [pendingConfirmation, setPendingConfirmation] = useState<ConfirmationInfo | null>(null);
+  const [thinkingText, setThinkingText] = useState<string | undefined>(undefined);
   const conversationId = 'default';
   const chatPanelRef = useRef<ChatPanelRef>(null);
 
@@ -24,11 +25,19 @@ export default function Dashboard() {
     setActivityEvents((prev) => [...prev, event]);
 
     // Handle specific events
-    if (event.type === 'agent.completed') {
+    if (event.type === 'agent.thinking') {
+      setThinkingText(event.message || 'Analyzing query, formulating execution plan...');
+    } else if (event.type === 'agent.planned') {
+      setThinkingText(event.plan || event.message || 'Executing plan...');
+    } else if (event.type === 'tool.started') {
+      setThinkingText(`Calling tool: ${event.tool || 'system'}...`);
+    } else if (event.type === 'agent.completed') {
       setSending(false);
+      setThinkingText(undefined);
       chatPanelRef.current?.scrollToBottom();
     } else if (event.type === 'agent.error') {
       setSending(false);
+      setThinkingText(undefined);
       // Add error as a message
       setMessages((prev) => [
         ...prev,
@@ -165,6 +174,7 @@ export default function Dashboard() {
               onSendMessage={handleSendMessage}
               onConfirm={handleConfirm}
               disabled={sending}
+              thinkingContent={thinkingText}
               pendingConfirmation={pendingConfirmation}
             />
           </div>
