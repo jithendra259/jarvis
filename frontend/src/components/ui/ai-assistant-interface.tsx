@@ -16,6 +16,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { LiveKitVoiceModal } from "@/components/voice/livekit-voice-modal";
 
 export function AIAssistantInterface() {
   const [inputValue, setInputValue] = useState("");
@@ -24,6 +25,9 @@ export function AIAssistantInterface() {
   const [reasonEnabled, setReasonEnabled] = useState(false);
   const [uploadedFiles, setUploadedFiles] = useState<string[]>([]);
   const [showUploadAnimation, setShowUploadAnimation] = useState(false);
+  const [isVoiceOpen, setIsVoiceOpen] = useState(false);
+  const [lastResponse, setLastResponse] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
   const [activeCommandCategory, setActiveCommandCategory] = useState<
     string | null
   >(null);
@@ -73,10 +77,28 @@ export function AIAssistantInterface() {
     }
   };
 
-  const handleSendMessage = () => {
-    if (inputValue.trim()) {
-      console.log("Sending message:", inputValue);
-      setInputValue("");
+  const handleSendMessage = async () => {
+    if (!inputValue.trim() || isLoading) return;
+    const prompt = inputValue;
+    setInputValue("");
+    setIsLoading(true);
+
+    try {
+      const res = await fetch("http://127.0.0.1:8000/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: prompt }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setLastResponse(data.reply);
+      } else {
+        setLastResponse("Could not reach Jarvis backend engine.");
+      }
+    } catch (err: any) {
+      setLastResponse(`Error connecting to Jarvis engine: ${err.message}`);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -204,11 +226,15 @@ export function AIAssistantInterface() {
             transition={{ duration: 0.3 }}
             className="flex flex-col items-center"
           >
+            <div className="flex items-center gap-2 mb-2 px-3 py-1 bg-emerald-50 border border-emerald-200 text-emerald-700 rounded-full text-xs font-medium">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+              <span>Jarvis Agent & OmniRoute Connected</span>
+            </div>
             <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-blue-400 mb-2">
               Ready to assist you
             </h1>
             <p className="text-gray-500 max-w-md">
-              Ask me anything or try one of the suggestions below
+              Ask me anything or say &quot;Open VS Code&quot; / &quot;Open Calculator&quot;
             </p>
           </motion.div>
         </div>
@@ -219,9 +245,15 @@ export function AIAssistantInterface() {
             <input
               ref={inputRef}
               type="text"
-              placeholder="Ask me anything..."
+              placeholder="Ask me anything or say 'Open VS Code'..."
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  handleSendMessage();
+                }
+              }}
               className="w-full text-gray-700 text-base outline-none placeholder:text-gray-400"
             />
           </div>
@@ -326,14 +358,18 @@ export function AIAssistantInterface() {
               </button>
             </div>
             <div className="flex items-center gap-2">
-              <button className="p-2 text-gray-400 hover:text-gray-600 transition-colors">
-                <Mic className="w-5 h-5" />
+              <button
+                onClick={() => setIsVoiceOpen(true)}
+                className="p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-full transition-colors"
+                title="Start Realtime Voice (LiveKit)"
+              >
+                <Mic className="w-5 h-5 text-blue-600" />
               </button>
               <button
                 onClick={handleSendMessage}
-                disabled={!inputValue.trim()}
+                disabled={!inputValue.trim() || isLoading}
                 className={`w-8 h-8 flex items-center justify-center rounded-full transition-colors ${
-                  inputValue.trim()
+                  inputValue.trim() && !isLoading
                     ? "bg-blue-600 text-white hover:bg-blue-700"
                     : "bg-gray-100 text-gray-400 cursor-not-allowed"
                 }`}
@@ -475,7 +511,24 @@ export function AIAssistantInterface() {
             </motion.div>
           )}
         </AnimatePresence>
+
+        {/* Jarvis Agent Response Card */}
+        {lastResponse && (
+          <div className="w-full bg-blue-50 border border-blue-200 rounded-xl p-4 mb-4 text-blue-950 shadow-sm animate-in fade-in">
+            <div className="flex items-center gap-2 mb-1">
+              <Sparkles className="w-4 h-4 text-blue-600" />
+              <span className="font-semibold text-xs text-blue-800 uppercase tracking-wider">Jarvis</span>
+            </div>
+            <p className="text-sm leading-relaxed whitespace-pre-wrap">{lastResponse}</p>
+          </div>
+        )}
       </div>
+
+      {/* LiveKit Real-Time Voice Modal */}
+      <LiveKitVoiceModal
+        isOpen={isVoiceOpen}
+        onClose={() => setIsVoiceOpen(false)}
+      />
     </div>
   );
 }
