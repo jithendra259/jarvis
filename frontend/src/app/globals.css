@@ -136,3 +136,19 @@
     display: none;
   }
 }
+
+/* Animated gradient for the logo */
+@keyframes gradient-shift {
+  0% {
+    transform: rotate(0deg) scale(1);
+  }
+  100% {
+    transform: rotate(360deg) scale(1);
+  }
+}
+
+.animate-gradient {
+  animation: gradient-shift 8s linear infinite;
+  transform-origin: center;
+  transform-box: fill-box;
+}
